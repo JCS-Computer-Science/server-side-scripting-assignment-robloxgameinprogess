@@ -54,7 +54,7 @@ server.post("/guess", (req,res)=>{
             let guessCheck=guess.split("")
             if(guessCheck.length!=5){
                 res.status(400)
-                res.send({error:"guess is not 5 letters long"})
+                res.send({error: "guess is not 5 letters long"})
             }
             let word=game.wordToGuess.split("")
             let guessArr=[]
@@ -64,24 +64,42 @@ server.post("/guess", (req,res)=>{
                 game.rightLetters=guessCheck
             }else{
                 for (let i = 0; i < guessCheck.length; i++) {
+                    let guessLetter=guessCheck[i].toLowerCase()
+                    if(guessLetter.toLowerCase() == guessLetter.toUpperCase()){
+                        res.status(400)
+                        res.send({error: "guess contains a number or a special character"})
+                    }
                     let included=false
                     let guessObj={
-                        value:guessCheck[i]
+                        value:guessLetter
                     }
                     for (let j = 0; j < word.length; j++) {
-                        if(word[j]==guessCheck[i]){
+                        if(word[j]==guessLetter){
+                            console.log(guessLetter)
                             if(j==i){
-                                game.rightLetters.push(guessCheck[i])
+                                if(game.closeLetters.includes(guessLetter)){
+                                    let index=game.closeLetters.indexOf(guessLetter)
+                                    game.closeLetters.splice(index,1)
+                                }
+                                if(game.rightLetters.includes(guessLetter)){
+                                    let index=game.rightLetters.indexOf(guessLetter)
+                                    game.rightLetters.splice(index,1)
+                                }
+                                game.rightLetters.push(guessLetter)
                                 guessObj.result="RIGHT"
                             }else{
-                                game.closeLetters.push(guessCheck[i])
+                                if(game.closeLetters.includes(guessLetter)){
+                                    let index=game.closeLetters.indexOf(guessLetter)
+                                    game.closeLetters.splice(index,1)
+                                }
+                                game.closeLetters.push(guessLetter)
                                 guessObj.result="CLOSE"
                             }
                             included=true
                         }
                     }
                     if(included==false){
-                        game.wrongLetters.push(guessCheck[i])
+                        game.wrongLetters.push(guessLetter)
                         guessObj.result="WRONG"
                     }
                     guessArr.push(guessObj)
@@ -99,9 +117,33 @@ server.post("/guess", (req,res)=>{
         }
     }
 })
-// server.delete("/reset", (req,res)=>{
-    
-// })
+server.delete("/reset", (req,res)=>{
+    let ID= req.query.sessionID
+    if(!ID){
+        res.status(400)
+        res.send({error: "id is missing"})
+    }else{
+        if(activeSessions[ID]){
+            let game=activeSessions[ID]
+            let word=game.wordToGuess
+            let newGame = {
+                wordToGuess: undefined,
+                guesses:[],
+                wrongLetters: [],
+                closeLetters: [],
+                rightLetters: [],
+                remainingGuesses: 6,
+                gameOver: false,
+            }
+            activeSessions[ID] = newGame
+            res.status(200)
+            res.send({gameState: activeSessions[ID]})
+        }else{
+            res.status(404)
+            res.send({error: "game doesn't exist"})
+        }
+    }
+})
 // server.delete("/delete", (req,res)=>{
     
 // })
