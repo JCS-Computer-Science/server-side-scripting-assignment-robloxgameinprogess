@@ -124,8 +124,6 @@ server.delete("/reset", (req,res)=>{
         res.send({error: "id is missing"})
     }else{
         if(activeSessions[ID]){
-            let game=activeSessions[ID]
-            let word=game.wordToGuess
             let newGame = {
                 wordToGuess: undefined,
                 guesses:[],
@@ -144,9 +142,22 @@ server.delete("/reset", (req,res)=>{
         }
     }
 })
-// server.delete("/delete", (req,res)=>{
-    
-// })
+server.delete("/delete", (req,res)=>{
+    let ID= req.query.sessionID
+    if(!ID){
+        res.status(400)
+        res.send({error: "id is missing"})
+    }else{
+        if(activeSessions[ID]){
+            delete activeSessions[ID]
+            res.status(204)
+            res.send({gameState: activeSessions})
+        }else{
+            res.status(404)
+            res.send({error: "game doesn't exist"})
+        }
+    }
+})
 
 //Do not remove this line. This allows the test suite to start
 //multiple instances of your server on different ports
