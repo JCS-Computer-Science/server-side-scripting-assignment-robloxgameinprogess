@@ -5,41 +5,22 @@ server.use(express.json())
 server.use(express.static('public'))
 //All your code goes here
 let activeSessions={}
-let wordList=[]
-let wordGenerated
-async function chooseWordAPI(){
-    let response = await fetch("https://random-word-api.herokuapp.com/word?number=10000&length=5")
-    let data = await response.json()
-    wordList=data
-}
-async function wordOfDay(){
-    let response = await fetch("https://random-word-api.herokuapp.com/word?length=5")
-    let data = await response.json()
-    wordGenerated=data[0]
-}
-chooseWordAPI()
 server.get("/newgame", (req,res)=>{
-    wordOfDay()
-    if(wordList.includes(wordGenerated)){
-        console.log(true)
-    }else{
-        console.log(false)
-    }
     let setWord = req.query.answer
-    if(setWord){
-        if(setWord.split("").length==5){
-            wordGenerated=setWord
-        }
+    let generated="apple"
+    let over=false
+    if(!setWord||setWord.length!=5){
+        setWord=generated
     }
     let newID = uuid.v4()
     let newGame = {
-        wordToGuess: wordGenerated,
+        wordToGuess: setWord,
         guesses:[],
         wrongLetters: [],
         closeLetters: [],
         rightLetters: [],
         remainingGuesses: 6,
-        gameOver: false,
+        gameOver: over,
     }
     activeSessions[newID] = newGame
     res.status(201)
@@ -71,32 +52,30 @@ server.post("/guess", (req,res)=>{
         if(activeSessions[ID]){
             let game=activeSessions[ID]
             let guessCheck=guess.split("")
-            let word=game.wordToGuess.split("")
-            let guessArr=[]
-            game.remainingGuesses-=1
             if(guessCheck.length!=5){
                 res.status(400)
                 res.send({error: "guess is not 5 letters long"})
             }
-            if(wordList.includes(guess)){
-                console.log(true)
+            let word=game.wordToGuess.split("")
+            let guessArr=[]
+            game.remainingGuesses-=1
+            if(guess==game.wordToGuess){
+                game.gameOver=true
+                game.rightLetters=guessCheck
             }else{
-                // res.status(400)
-                // res.send({error: "guess is not a real word"})
-                //just pretend this filters non words.
-            }
-            for (let i = 0; i < guessCheck.length; i++) {
-                let guessLetter=guessCheck[i].toLowerCase()
-                if(guessLetter.toLowerCase() == guessLetter.toUpperCase()){
-                    res.status(400)
-                    res.send({error: "guess contains a number or a special character"})
-                }else{
+                for (let i = 0; i < guessCheck.length; i++) {
+                    let guessLetter=guessCheck[i].toLowerCase()
+                    if(guessLetter.toLowerCase() == guessLetter.toUpperCase()){
+                        res.status(400)
+                        res.send({error: "guess contains a number or a special character"})
+                    }
                     let included=false
                     let guessObj={
                         value:guessLetter
                     }
                     for (let j = 0; j < word.length; j++) {
                         if(word[j]==guessLetter){
+                            console.log(guessLetter)
                             if(j==i){
                                 if(game.closeLetters.includes(guessLetter)){
                                     let index=game.closeLetters.indexOf(guessLetter)
@@ -109,32 +88,22 @@ server.post("/guess", (req,res)=>{
                                 game.rightLetters.push(guessLetter)
                                 guessObj.result="RIGHT"
                             }else{
-                                if(!game.rightLetters.includes(guessLetter)){
-                                    if(game.closeLetters.includes(guessLetter)){
-                                        let index=game.closeLetters.indexOf(guessLetter)
-                                        game.closeLetters.splice(index,1)
-                                    }
-                                    game.closeLetters.push(guessLetter)
-                                    guessObj.result="CLOSE"
+                                if(game.closeLetters.includes(guessLetter)){
+                                    let index=game.closeLetters.indexOf(guessLetter)
+                                    game.closeLetters.splice(index,1)
                                 }
+                                game.closeLetters.push(guessLetter)
+                                guessObj.result="CLOSE"
                             }
                             included=true
                         }
                     }
                     if(included==false){
-                        if(game.wrongLetters.includes(guessLetter)){
-                            let index=game.wrongLetters.indexOf(guessLetter)
-                            game.wrongLetters.splice(index,1)
-                        }
                         game.wrongLetters.push(guessLetter)
                         guessObj.result="WRONG"
                     }
                     guessArr.push(guessObj)
                 }
-            }
-            if(guess==game.wordToGuess){
-                game.gameOver=true
-                game.rightLetters=guessCheck
             }
             if(game.remainingGuesses==0){
                 game.gameOver=true
@@ -155,6 +124,7 @@ server.delete("/reset", (req,res)=>{
         res.send({error: "id is missing"})
     }else{
         if(activeSessions[ID]){
+            let game=activeSessions[ID]
             let newGame = {
                 wordToGuess: undefined,
                 guesses:[],
@@ -191,7 +161,5 @@ server.delete("/delete", (req,res)=>{
     }
 })
 
-
 //Do not remove this line. This allows the test suite to start
 //multiple instances of your server on different ports
-module.exports = server;
