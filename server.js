@@ -7,6 +7,7 @@ server.use(express.static('public'))
 let activeSessions={}
 let wordList=[]
 let wordGenerated
+chooseWordAPI()
 async function chooseWordAPI(){
     let response = await fetch("https://random-word-api.herokuapp.com/word?number=10000&length=5")
     let data = await response.json()
@@ -17,14 +18,8 @@ async function wordOfDay(){
     let data = await response.json()
     wordGenerated=data[0]
 }
-chooseWordAPI()
 server.get("/newgame", (req,res)=>{
     wordOfDay()
-    if(wordList.includes(wordGenerated)){
-        console.log(true)
-    }else{
-        console.log(false)
-    }
     let setWord = req.query.answer
     if(setWord){
         if(setWord.split("").length==5){
@@ -64,6 +59,7 @@ server.get("/gamestate", (req,res)=>{
 server.post("/guess", (req,res)=>{
     let ID=req.body.sessionID
     let guess=req.body.guess
+    console.log(wordList.length)
     if(!ID){
         res.status(400)
         res.send({error: "id is missing"})
